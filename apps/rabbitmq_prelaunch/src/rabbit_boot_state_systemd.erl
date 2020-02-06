@@ -23,14 +23,12 @@
 -export([init/1,
          handle_call/3,
          handle_cast/2,
-         handle_info/2,
          terminate/2,
          code_change/3]).
 
 -record(state, {mechanism,
                 sd_notify_module,
                 socket}).
-
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -55,10 +53,6 @@ handle_call(_Request, _From, State) ->
 
 handle_cast({notify_boot_state, BootState}, State) ->
     notify_boot_state(BootState, State),
-    {noreply, State}.
-
-handle_info(Msg, State) ->
-    io:format(standard_error, "~p received unexpected message: ~p~n", [?MODULE, Msg]),
     {noreply, State}.
 
 terminate(normal, _State) ->
