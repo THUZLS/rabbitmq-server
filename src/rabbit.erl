@@ -405,12 +405,12 @@ start_it(StartType) ->
     end.
 
 wait_for_ready_or_stopped() ->
-    ok = rabbit_boot_state:wait_for(ready),
+    ok = rabbit_boot_state:wait_for(ready, ?BOOT_FINISH_TIMEOUT),
     case rabbit_boot_state:get() of
         ready ->
             ok;
         _ ->
-            ok = rabbit_boot_state:wait_for(stopped),
+            ok = rabbit_boot_state:wait_for(stopped, ?BOOT_FINISH_TIMEOUT),
             rabbit_prelaunch:get_stop_reason()
     end.
 
