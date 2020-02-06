@@ -54,7 +54,8 @@ handle_call(_Request, _From, State) ->
     {noreply, State}.
 
 handle_cast({notify_boot_state, BootState}, State) ->
-    handle_notify_boot_state(BootState, State).
+    notify_boot_state(BootState, State),
+    {noreply, State}.
 
 handle_info(Msg, State) ->
     io:format(standard_error, "~p received unexpected message: ~p~n", [?MODULE, Msg]),
@@ -68,16 +69,14 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% Private
 
-handle_notify_boot_state(ready, #state{mechanism = legacy, sd_notify_module = SDNotify} = State) ->
+notify_boot_state(ready, #state{mechanism = legacy, sd_notify_module = SDNotify}) ->
     rabbit_log_prelaunch:debug("notifying systemd of readiness via native module"),
-    sd_notify_legacy(SDNotify),
-    {noreply, State};
-handle_notify_boot_state(ready, #state{mechanism = socat, socket = Socket} = State) ->
+    sd_notify_legacy(SDNotify);
+notify_boot_state(ready, #state{mechanism = socat, socket = Socket}) ->
     rabbit_log_prelaunch:debug("notifying systemd of readiness via socat"),
-    sd_notify_socat(Socket),
-    {noreply, State};
-handle_notify_boot_state(_, State) ->
-    {noreply, State}.
+    sd_notify_socat(Socket);
+notify_boot_state(_, _) ->
+    ok.
 
 sd_notify_message() ->
     "READY=1\nSTATUS=Initialized\nMAINPID=" ++ os:getpid() ++ "\n".
@@ -97,10 +96,10 @@ sd_notify_legacy(SDNotify) ->
 sd_notify_socat(Socket) ->
     case sd_current_unit() of
         {ok, Unit} ->
-            io:format(standard_error, "systemd unit for activation check: \"~s\"~n", [Unit]),
+            rabbit_log_prelaunch:debug("systemd unit for activation check: \"~s\"~n", [Unit]),
             sd_notify_socat(Socket, Unit);
         _ ->
-            false
+            ok
     end.
 
 sd_notify_socat(Socket, Unit) ->
@@ -112,7 +111,7 @@ sd_notify_socat(Socket, Unit) ->
             Result
     catch
         Class:Reason ->
-            io:format(standard_error, "Failed to start socat ~p:~p~n", [Class, Reason]),
+            rabbit_log_prelaunch:debug("Failed to start socat ~p:~p~n", [Class, Reason]),
             false
     end.
 
@@ -141,24 +140,24 @@ sd_open_port(Socket) ->
 sd_wait_activation(Port, Unit) ->
     case os:find_executable("systemctl") of
         false ->
-            io:format(standard_error, "'systemctl' unavailable, falling back to sleep~n", []),
+            rabbit_log_prelaunch:debug("'systemctl' unavailable, falling back to sleep~n", []),
             timer:sleep(5000),
-            true;
+            ok;
         _ ->
             sd_wait_activation(Port, Unit, 10)
     end.
 
 sd_wait_activation(_, _, 0) ->
-    io:format(standard_error, "Service still in 'activating' state, bailing out~n", []),
-    false;
+    rabbit_log_prelaunch:debug("Service still in 'activating' state, bailing out~n", []),
+    ok;
 sd_wait_activation(Port, Unit, AttemptsLeft) ->
     case os:cmd("systemctl show --property=ActiveState -- '" ++ Unit ++ "'") of
         "ActiveState=activating\n" ->
             timer:sleep(1000),
             sd_wait_activation(Port, Unit, AttemptsLeft - 1);
         "ActiveState=" ++ _ ->
-            true;
+            ok;
         _ = Err ->
-            io:format(standard_error, "Unexpected status from systemd ~p~n", [Err]),
-            false
+            rabbit_log_prelaunch:debug("Unexpected status from systemd ~p~n", [Err]),
+            ok
     end.
