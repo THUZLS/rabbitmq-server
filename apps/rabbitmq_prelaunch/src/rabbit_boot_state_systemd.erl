@@ -27,7 +27,8 @@
          terminate/2,
          code_change/3]).
 
--record(state, {sd_notify_module,
+-record(state, {mechanism,
+                sd_notify_module,
                 socket}).
 
 
@@ -37,11 +38,13 @@ start_link() ->
 init([]) ->
     case code:load_file(sd_notify) of
         {module, sd_notify} ->
-            {ok, #state{sd_notify_module = sd_notify}};
+            {ok, #state{mechanism = legacy,
+                        sd_notify_module = sd_notify}};
         {error, _} ->
             case rabbit_prelaunch:get_context() of
                 #{systemd_notify_socket := Socket} when Socket =/= undefined ->
-                    {ok, #state{socket = Socket}};
+                    {ok, #state{mechanism = socat,
+                                socket = Socket}};
                 _ ->
                     ignore
             end
@@ -50,16 +53,8 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {noreply, State}.
 
-handle_cast({notify_boot_state, ready}, #{sd_notify_module := SDNotify} = State) ->
-    rabbit_log_prelaunch:debug("notifying systemd of readiness via native module"),
-    sd_notify_legacy(SDNotify),
-    {noreply, State};
-handle_cast({notify_boot_state, ready}, #{socket := Socket} = State) ->
-    rabbit_log_prelaunch:debug("notifying systemd of readiness via socat"),
-    sd_notify_socat(Socket),
-    {noreply, State};
-handle_cast({notify_boot_state, _BootState}, State) ->
-    {noreply, State}.
+handle_cast({notify_boot_state, BootState}, State) ->
+    handle_notify_boot_state(BootState, State).
 
 handle_info(Msg, State) ->
     io:format(standard_error, "Unexpected message: ~p~n", [Msg]),
@@ -73,6 +68,17 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%% Private
+
+handle_notify_boot_state(ready, #state{mechanism = legacy, sd_notify_module = SDNotify} = State) ->
+    rabbit_log_prelaunch:debug("notifying systemd of readiness via native module"),
+    sd_notify_legacy(SDNotify),
+    {noreply, State};
+handle_notify_boot_state(ready, #state{mechanism = socat, socket = Socket} = State) ->
+    rabbit_log_prelaunch:debug("notifying systemd of readiness via socat"),
+    sd_notify_socat(Socket),
+    {noreply, State};
+handle_notify_boot_state(_, State) ->
+    {noreply, State}.
 
 sd_notify_message() ->
     "READY=1\nSTATUS=Initialized\nMAINPID=" ++ os:getpid() ++ "\n".
