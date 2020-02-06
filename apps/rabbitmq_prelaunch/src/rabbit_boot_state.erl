@@ -40,7 +40,7 @@ set(BootState) ->
         stopped -> persistent_term:erase(?PT_KEY_BOOT_STATE);
         _       -> persistent_term:put(?PT_KEY_BOOT_STATE, BootState)
     end,
-    notify_boot_state_listeners(BootState).
+    rabbit_boot_state_sup:notify_boot_state_listeners(BootState).
 
 -spec wait_for(boot_state()) -> ok | {error, timeout}.
 wait_for(BootState) ->
@@ -85,9 +85,3 @@ is_boot_state_reached(stopped, _TargetBootState) ->
     true;
 is_boot_state_reached(CurrentBootState, TargetBootState) ->
     boot_state_idx(TargetBootState) =< boot_state_idx(CurrentBootState).
-
-notify_boot_state_listeners(BootState) ->
-    lists:foreach(fun(Child) ->
-                          gen_server:cast(Child, {notify_boot_state, BootState})
-                  end,
-                  rabbit_boot_state_sup:child_pids()).

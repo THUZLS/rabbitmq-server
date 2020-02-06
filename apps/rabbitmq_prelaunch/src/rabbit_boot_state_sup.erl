@@ -20,7 +20,7 @@
 -export([start_link/0,
          init/1]).
 
--export([child_pids/0]).
+-export([notify_boot_state_listeners/1]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -34,7 +34,11 @@ init([]) ->
             period => 5},
           [SystemdSpec]}}.
 
-child_pids() ->
-    lists:filtermap(fun({_, Child, _, _}) when is_pid(Child) -> {true, Child};
-                       (_) -> false
-                    end, supervisor:which_children(?MODULE)).
+-spec notify_boot_state_listeners(rabbit_boot_state:boot_state()) -> ok.
+notify_boot_state_listeners(BootState) ->
+    lists:foreach(fun({_, Child, _, _}) when is_pid(Child) ->
+                          gen_server:cast(Child, {notify_boot_state, BootState});
+                     (_) ->
+                          ok
+                  end,
+                  supervisor:which_children(?MODULE)).
