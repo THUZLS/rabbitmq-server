@@ -29,21 +29,21 @@ run_prelaunch_first_phase() ->
         throw:{error, _} = Error ->
             rabbit_prelaunch_errors:log_error(Error),
             set_stop_reason(Error),
-            rabbit_boot_state:set_boot_state(stopped),
+            rabbit_boot_state:set(stopped),
             Error;
         Class:Exception:Stacktrace ->
             rabbit_prelaunch_errors:log_exception(
               Class, Exception, Stacktrace),
             Error = {error, Exception},
             set_stop_reason(Error),
-            rabbit_boot_state:set_boot_state(stopped),
+            rabbit_boot_state:set(stopped),
             Error
     end.
 
 do_run() ->
     %% Indicate RabbitMQ is booting.
     clear_stop_reason(),
-    rabbit_boot_state:set_boot_state(booting),
+    rabbit_boot_state:set(booting),
 
     %% Configure dbg if requested.
     rabbit_prelaunch_early_logging:enable_quick_dbg(rabbit_env:dbg_config()),

@@ -18,9 +18,9 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([get_boot_state/0,
-         set_boot_state/1,
-         wait_for_boot_state/1]).
+-export([get/0,
+         set/1,
+         wait_for/1]).
 
 -define(PT_KEY_BOOT_STATE,    {?MODULE, boot_state}).
 
@@ -28,12 +28,12 @@
 
 -export_type([boot_state/0]).
 
--spec get_boot_state() -> boot_state().
-get_boot_state() ->
+-spec get() -> boot_state().
+get() ->
     persistent_term:get(?PT_KEY_BOOT_STATE, stopped).
 
--spec set_boot_state(boot_state()) -> term().
-set_boot_state(BootState) ->
+-spec set(boot_state()) -> ok.
+set(BootState) ->
     rabbit_log_prelaunch:debug("Change boot state to `~s`", [BootState]),
     ?assert(is_boot_state_valid(BootState)),
     case BootState of
@@ -42,28 +42,25 @@ set_boot_state(BootState) ->
     end,
     notify_boot_state_listeners(BootState).
 
--spec wait_for_boot_state(boot_state()) -> term().
-wait_for_boot_state(BootState) ->
+-spec wait_for(boot_state()) -> ok | {error, timeout}.
+wait_for(BootState) ->
+    ?assert(is_boot_state_valid(BootState)),
     wait_for_boot_state(BootState, infinity).
 
-wait_for_boot_state(BootState, Timeout) ->
-    ?assert(is_boot_state_valid(BootState)),
-    wait_for_boot_state1(BootState, Timeout).
-
-wait_for_boot_state1(BootState, infinity = Timeout) ->
+wait_for_boot_state(BootState, infinity = Timeout) ->
     case is_boot_state_reached(BootState) of
         true  -> ok;
-        false -> wait_for_boot_state1(BootState, Timeout)
+        false -> wait_for_boot_state(BootState, Timeout)
     end;
-wait_for_boot_state1(BootState, Timeout)
+wait_for_boot_state(BootState, Timeout)
     when is_integer(Timeout) andalso Timeout >= 0 ->
     case is_boot_state_reached(BootState) of
         true  -> ok;
         false -> Wait = 200,
             timer:sleep(Wait),
-            wait_for_boot_state1(BootState, Timeout - Wait)
+            wait_for_boot_state(BootState, Timeout - Wait)
     end;
-wait_for_boot_state1(_, _) ->
+wait_for_boot_state(_, _) ->
     {error, timeout}.
 
 boot_state_idx(stopped)  -> 0;
@@ -76,7 +73,7 @@ is_boot_state_valid(BootState) ->
     is_integer(boot_state_idx(BootState)).
 
 is_boot_state_reached(TargetBootState) ->
-    is_boot_state_reached(get_boot_state(), TargetBootState).
+    is_boot_state_reached(?MODULE:get(), TargetBootState).
 
 is_boot_state_reached(CurrentBootState, CurrentBootState) ->
     true;
