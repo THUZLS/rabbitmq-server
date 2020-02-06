@@ -11,8 +11,7 @@
 %%
 %% The Original Code is RabbitMQ.
 %%
-%% The Initial Developer of the Original Code is GoPivotal, Inc.
-%% Copyright (c) 2007-2020 Pivotal Software, Inc.  All rights reserved.
+%% Copyright (c) 2019-2020 Pivotal Software, Inc.  All rights reserved.
 %%
 
 -module(rabbit_boot_state).
@@ -31,41 +30,41 @@
 
 -spec get_boot_state() -> boot_state().
 get_boot_state() ->
-  persistent_term:get(?PT_KEY_BOOT_STATE, stopped).
+    persistent_term:get(?PT_KEY_BOOT_STATE, stopped).
 
 -spec set_boot_state(boot_state()) -> term().
 set_boot_state(BootState) ->
-  rabbit_log_prelaunch:debug("Change boot state to `~s`", [BootState]),
-  ?assert(is_boot_state_valid(BootState)),
-  case BootState of
-    stopped -> persistent_term:erase(?PT_KEY_BOOT_STATE);
-    _ -> persistent_term:put(?PT_KEY_BOOT_STATE, BootState)
-  end,
-  notify_boot_state_listeners(BootState).
+    rabbit_log_prelaunch:debug("Change boot state to `~s`", [BootState]),
+    ?assert(is_boot_state_valid(BootState)),
+    case BootState of
+        stopped -> persistent_term:erase(?PT_KEY_BOOT_STATE);
+        _       -> persistent_term:put(?PT_KEY_BOOT_STATE, BootState)
+    end,
+    notify_boot_state_listeners(BootState).
 
 -spec wait_for_boot_state(boot_state()) -> term().
 wait_for_boot_state(BootState) ->
-  wait_for_boot_state(BootState, infinity).
+    wait_for_boot_state(BootState, infinity).
 
 wait_for_boot_state(BootState, Timeout) ->
-  ?assert(is_boot_state_valid(BootState)),
-  wait_for_boot_state1(BootState, Timeout).
+    ?assert(is_boot_state_valid(BootState)),
+    wait_for_boot_state1(BootState, Timeout).
 
 wait_for_boot_state1(BootState, infinity = Timeout) ->
-  case is_boot_state_reached(BootState) of
-    true  -> ok;
-    false -> wait_for_boot_state1(BootState, Timeout)
-  end;
+    case is_boot_state_reached(BootState) of
+        true  -> ok;
+        false -> wait_for_boot_state1(BootState, Timeout)
+    end;
 wait_for_boot_state1(BootState, Timeout)
-  when is_integer(Timeout) andalso Timeout >= 0 ->
-  case is_boot_state_reached(BootState) of
-    true  -> ok;
-    false -> Wait = 200,
-      timer:sleep(Wait),
-      wait_for_boot_state1(BootState, Timeout - Wait)
-  end;
+    when is_integer(Timeout) andalso Timeout >= 0 ->
+    case is_boot_state_reached(BootState) of
+        true  -> ok;
+        false -> Wait = 200,
+            timer:sleep(Wait),
+            wait_for_boot_state1(BootState, Timeout - Wait)
+    end;
 wait_for_boot_state1(_, _) ->
-  {error, timeout}.
+    {error, timeout}.
 
 boot_state_idx(stopped)  -> 0;
 boot_state_idx(booting)  -> 1;
@@ -74,21 +73,21 @@ boot_state_idx(stopping) -> 3;
 boot_state_idx(_)        -> undefined.
 
 is_boot_state_valid(BootState) ->
-  is_integer(boot_state_idx(BootState)).
+    is_integer(boot_state_idx(BootState)).
 
 is_boot_state_reached(TargetBootState) ->
-  is_boot_state_reached(get_boot_state(), TargetBootState).
+    is_boot_state_reached(get_boot_state(), TargetBootState).
 
 is_boot_state_reached(CurrentBootState, CurrentBootState) ->
-  true;
+    true;
 is_boot_state_reached(stopping, stopped) ->
-  false;
+    false;
 is_boot_state_reached(_CurrentBootState, stopped) ->
-  true;
+    true;
 is_boot_state_reached(stopped, _TargetBootState) ->
-  true;
+    true;
 is_boot_state_reached(CurrentBootState, TargetBootState) ->
-  boot_state_idx(TargetBootState) =< boot_state_idx(CurrentBootState).
+    boot_state_idx(TargetBootState) =< boot_state_idx(CurrentBootState).
 
 notify_boot_state_listeners(BootState) ->
     lists:foreach(fun(Child) ->

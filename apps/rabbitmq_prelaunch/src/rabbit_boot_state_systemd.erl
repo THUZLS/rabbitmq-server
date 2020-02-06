@@ -11,8 +11,7 @@
 %%
 %% The Original Code is RabbitMQ.
 %%
-%% The Initial Developer of the Original Code is GoPivotal, Inc.
-%% Copyright (c) 2007-2020 Pivotal Software, Inc.  All rights reserved.
+%% Copyright (c) 2015-2020 Pivotal Software, Inc.  All rights reserved.
 %%
 
 -module(rabbit_boot_state_systemd).
@@ -63,7 +62,7 @@ handle_cast({notify_boot_state, _BootState}, State) ->
     {noreply, State}.
 
 handle_info(Msg, State) ->
-    io:format(standard_error, "Unexpected message: ~p~n",[Msg]),
+    io:format(standard_error, "Unexpected message: ~p~n", [Msg]),
     {noreply, State}.
 
 terminate(normal, _State) ->
@@ -76,7 +75,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Private
 
 sd_notify_message() ->
-  "READY=1\nSTATUS=Initialized\nMAINPID=" ++ os:getpid() ++ "\n".
+    "READY=1\nSTATUS=Initialized\nMAINPID=" ++ os:getpid() ++ "\n".
 
 sd_notify_legacy(SDNotify) ->
     SDNotify:sd_notify(0, sd_notify_message()).
@@ -91,70 +90,70 @@ sd_notify_legacy(SDNotify) ->
 %% Some details on how we ended with such a solution:
 %%   https://github.com/rabbitmq/rabbitmq-server/issues/664
 sd_notify_socat(Socket) ->
-  case sd_current_unit() of
-    {ok, Unit} ->
-      io:format(standard_error, "systemd unit for activation check: \"~s\"~n", [Unit]),
-      sd_notify_socat(Socket, Unit);
-    _ ->
-      false
-  end.
+    case sd_current_unit() of
+        {ok, Unit} ->
+            io:format(standard_error, "systemd unit for activation check: \"~s\"~n", [Unit]),
+            sd_notify_socat(Socket, Unit);
+        _ ->
+            false
+    end.
 
 sd_notify_socat(Socket, Unit) ->
-  try sd_open_port(Socket) of
-    Port ->
-      Port ! {self(), {command, sd_notify_message()}},
-      Result = sd_wait_activation(Port, Unit),
-      port_close(Port),
-      Result
-  catch
-    Class:Reason ->
-      io:format(standard_error, "Failed to start socat ~p:~p~n", [Class, Reason]),
-      false
-  end.
+    try sd_open_port(Socket) of
+        Port ->
+            Port ! {self(), {command, sd_notify_message()}},
+            Result = sd_wait_activation(Port, Unit),
+            port_close(Port),
+            Result
+    catch
+        Class:Reason ->
+            io:format(standard_error, "Failed to start socat ~p:~p~n", [Class, Reason]),
+            false
+    end.
 
 sd_current_unit() ->
-  CmdOut = os:cmd("ps -o unit= -p " ++ os:getpid()),
-  case catch re:run(CmdOut, "([-.@0-9a-zA-Z]+)", [unicode, {capture, all_but_first, list}]) of
-    {'EXIT', _} ->
-      error;
-    {match, [Unit]} ->
-      {ok, Unit};
-    _ ->
-      error
-  end.
+    CmdOut = os:cmd("ps -o unit= -p " ++ os:getpid()),
+    case catch re:run(CmdOut, "([-.@0-9a-zA-Z]+)", [unicode, {capture, all_but_first, list}]) of
+        {'EXIT', _} ->
+            error;
+        {match, [Unit]} ->
+            {ok, Unit};
+        _ ->
+            error
+    end.
 
 socat_socket_arg("@" ++ AbstractUnixSocket) ->
-  "abstract-sendto:" ++ AbstractUnixSocket;
+    "abstract-sendto:" ++ AbstractUnixSocket;
 socat_socket_arg(UnixSocket) ->
-  "unix-sendto:" ++ UnixSocket.
+    "unix-sendto:" ++ UnixSocket.
 
 sd_open_port(Socket) ->
-  open_port(
-    {spawn_executable, os:find_executable("socat")},
-    [{args, [socat_socket_arg(Socket), "STDIO"]},
-      use_stdio, out]).
+    open_port(
+        {spawn_executable, os:find_executable("socat")},
+        [{args, [socat_socket_arg(Socket), "STDIO"]},
+            use_stdio, out]).
 
 sd_wait_activation(Port, Unit) ->
-  case os:find_executable("systemctl") of
-    false ->
-      io:format(standard_error, "'systemctl' unavailable, falling back to sleep~n", []),
-      timer:sleep(5000),
-      true;
-    _ ->
-      sd_wait_activation(Port, Unit, 10)
-  end.
+    case os:find_executable("systemctl") of
+        false ->
+            io:format(standard_error, "'systemctl' unavailable, falling back to sleep~n", []),
+            timer:sleep(5000),
+            true;
+        _ ->
+            sd_wait_activation(Port, Unit, 10)
+    end.
 
 sd_wait_activation(_, _, 0) ->
-  io:format(standard_error, "Service still in 'activating' state, bailing out~n", []),
-  false;
+    io:format(standard_error, "Service still in 'activating' state, bailing out~n", []),
+    false;
 sd_wait_activation(Port, Unit, AttemptsLeft) ->
-  case os:cmd("systemctl show --property=ActiveState -- '" ++ Unit ++ "'") of
-    "ActiveState=activating\n" ->
-      timer:sleep(1000),
-      sd_wait_activation(Port, Unit, AttemptsLeft - 1);
-    "ActiveState=" ++ _ ->
-      true;
-    _ = Err->
-      io:format(standard_error, "Unexpected status from systemd ~p~n", [Err]),
-      false
-  end.
+    case os:cmd("systemctl show --property=ActiveState -- '" ++ Unit ++ "'") of
+        "ActiveState=activating\n" ->
+            timer:sleep(1000),
+            sd_wait_activation(Port, Unit, AttemptsLeft - 1);
+        "ActiveState=" ++ _ ->
+            true;
+        _ = Err ->
+            io:format(standard_error, "Unexpected status from systemd ~p~n", [Err]),
+            false
+    end.
