@@ -57,11 +57,10 @@ handle_cast({notify_boot_state, BootState}, State) ->
     handle_notify_boot_state(BootState, State).
 
 handle_info(Msg, State) ->
-    io:format(standard_error, "Unexpected message: ~p~n", [Msg]),
+    io:format(standard_error, "~p received unexpected message: ~p~n", [?MODULE, Msg]),
     {noreply, State}.
 
 terminate(normal, _State) ->
-    io:format(standard_error, "~p terminating.~n", [?MODULE]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
