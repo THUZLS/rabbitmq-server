@@ -192,16 +192,19 @@ dequeue(ConsumerTag, Settlement, #state{timeout = Timeout,
                                         cluster_name = QName} = State0) ->
     Node = pick_node(State0),
     ConsumerId = consumer_id(ConsumerTag),
-    rabbit_log:info("dequeue to ~w with ~w ~w", [Node, ConsumerId, Timeout]),
+    % rabbit_log:info("dequeue to ~w with ~w ~w", [Node, ConsumerId, Timeout]),
     case ra:process_command(Node,
                             rabbit_fifo:make_checkout(ConsumerId,
                                                       {dequeue, Settlement},
                                                       #{}),
                             Timeout) of
         {ok, {dequeue, empty}, Leader} ->
-            {ok, empty, State0#state{leader = Leader}};
+            {empty, State0#state{leader = Leader}};
         {ok, {dequeue, {MsgId, {MsgHeader, Msg0}}, MsgsReady}, Leader} ->
-            Count = maps:get(delivery_count, MsgHeader, 0),
+            Count = case MsgHeader of
+                        #{delivery_count := C} -> C;
+                       _ -> 0
+                    end,
             IsDelivered = Count > 0,
             Msg = add_delivery_count_header(Msg0, Count),
             {ok, MsgsReady,
@@ -361,7 +364,7 @@ checkout(ConsumerTag, NumUnsettled, CreditMode, Meta,
                                     Meta),
     %% ???
     Ack = maps:get(ack, Meta, true),
-    rabbit_log:info("checkout ~w AckRequired: ~w", [ConsumerTag, Ack]),
+    % rabbit_log:info("checkout ~w AckRequired: ~w", [ConsumerTag, Ack]),
 
     SDels = maps:update_with(ConsumerTag,
                              fun (V) ->
@@ -748,11 +751,16 @@ handle_delivery(Leader, {delivery, Tag, [{FstId, _} | _] = IdMsgs},
     end.
 
 transform_msgs(QName, QRef, Msgs) ->
-    lists:map(fun({MsgId, {MsgHeader, Msg0}}) ->
-                      Count = maps:get(delivery_count, MsgHeader, not_found),
-                      Msg = add_delivery_count_header(Msg0, Count),
-                      {QName, QRef, MsgId, is_integer(Count), Msg}
-              end, Msgs).
+    lists:map(
+      fun({MsgId, {MsgHeader, Msg0}}) ->
+              {Msg, Redelivered} = case MsgHeader of
+                                       #{delivery_count := C} ->
+                                           {add_delivery_count_header(Msg0, C), true};
+                                       _ ->
+                                           {Msg0, false}
+                                   end,
+              {QName, QRef, MsgId, Redelivered, Msg}
+      end, Msgs).
 
 update_consumer(Tag, LastId, DelCntIncr,
                 #consumer{delivery_count = D} = C, Consumers) ->

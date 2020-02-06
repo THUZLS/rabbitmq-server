@@ -146,6 +146,7 @@ smoke(Config) ->
          #amqp_msg{}} ->
             basic_ack(Ch, DeliveryTag)
     after 5000 ->
+              flush(),
               exit(basic_deliver_timeout)
     end,
     basic_cancel(Ch, ConsumerTag1),

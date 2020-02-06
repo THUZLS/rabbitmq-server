@@ -755,7 +755,7 @@ handle_cast({queue_event, QRef, Evt},
             #ch{queue_states = QueueStates0} = State0) ->
     %% TODO: amend Ra event to follow same format and cast so we only need
     %% one handler
-    rabbit_log:info("handle_event ~w", [Evt]),
+    % rabbit_log:info("handle_event ~w", [Evt]),
     case rabbit_queue_type:handle_event(QRef, Evt, QueueStates0) of
         {ok, QState1, Actions} ->
             State1 = State0#ch{queue_states = QState1},
@@ -1201,7 +1201,7 @@ maybe_set_fast_reply_to(C, _State) ->
 record_rejects([], State) ->
     State;
 record_rejects(MXs, State = #ch{rejected = R, tx = Tx}) ->
-    rabbit_log:info("record_rejects ~w", [MXs]),
+    % rabbit_log:info("record_rejects ~w", [MXs]),
     Tx1 = case Tx of
         none -> none;
         _    -> failed
@@ -2227,7 +2227,7 @@ send_confirms_and_nacks(State = #ch{tx = none, confirmed = C, rejected = R}) ->
                         ?INCR_STATS(exchange_stats, XName, 1, confirm, State),
                         [MsgSeqNo | MSNs]
                     end, [], Confirms),
-            rabbit_log:info("send confirms Rejects ~w", [Rejects]),
+            % rabbit_log:info("send confirms Rejects ~w", [Rejects]),
             RejectMsgSeqNos = [MsgSeqNo || {MsgSeqNo, _} <- Rejects],
 
             State1 = send_confirms(ConfirmMsgSeqNos,
@@ -2667,6 +2667,7 @@ handle_deliver0(ConsumerTag, AckRequired,
                                redelivered  = Redelivered,
                                exchange     = ExchangeName#resource.name,
                                routing_key  = RoutingKey},
+    % rabbit_log:info("handle delivery ~w", [Msg]),
     case ?IS_CLASSIC(QPid) of
         true ->
             ok = rabbit_writer:send_command_and_notify(

@@ -111,7 +111,7 @@ init(Q) when ?is_amqqueue(Q) ->
     {ok, rabbit_fifo_client:state(), rabbit_queue_type:actions()} |
     eol.
 handle_event({From, Evt}, QState) ->
-    rabbit_log:info("qq: handle_event ~w", [Evt]),
+    % rabbit_log:info("qq: handle_event ~w", [Evt]),
     rabbit_fifo_client:handle_ra_event(From, Evt, QState).
 
 -spec declare(amqqueue:amqqueue(), node()) ->
@@ -626,7 +626,7 @@ consume(Q, Spec, QState0) when ?amqqueue_is_quorum(Q) ->
                                                  not NoAck, QName,
                                                  ConsumerPrefetchCount, IsSingleActiveConsumer,
                                                  ActivityStatus, Args),
-            {ok, QState};
+            {ok, QState, []};
         {error, Error} ->
             Error;
         {timeout, _} ->
