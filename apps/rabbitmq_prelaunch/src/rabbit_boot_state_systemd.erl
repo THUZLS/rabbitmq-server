@@ -16,7 +16,7 @@
 
 -module(rabbit_boot_state_systemd).
 
--behavior(gen_server).
+-behaviour(gen_server).
 
 -export([start_link/0]).
 
