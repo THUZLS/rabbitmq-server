@@ -210,6 +210,8 @@ dequeue(ConsumerTag, Settlement, #state{timeout = Timeout,
             {ok, MsgsReady,
              {QName, qref(Leader), MsgId, IsDelivered, Msg},
              State0#state{leader = Leader}};
+        {ok, {error, _} = Err, _Leader} ->
+            Err;
         Err ->
             Err
     end.

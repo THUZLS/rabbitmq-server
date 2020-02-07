@@ -927,7 +927,7 @@ list_by_type(Type) ->
 list_local_quorum_queue_names() ->
     [ amqqueue:get_name(Q) || Q <- list_by_type(quorum),
            amqqueue:get_state(Q) =/= crashed,
-           lists:member(node(), get_quorum_nodes(Q))].
+      lists:member(node(), get_quorum_nodes(Q))].
 
 -spec list_local_quorum_queues() -> [amqqueue:amqqueue()].
 list_local_quorum_queues() ->
@@ -1754,7 +1754,7 @@ immutable(Q) -> amqqueue:set_immutable(Q).
 
 get_quorum_nodes(Q) ->
     case amqqueue:get_type_state(Q) of
-        #{quorum_nodes := Nodes} ->
+        #{nodes := Nodes} ->
             Nodes;
         _ ->
             []

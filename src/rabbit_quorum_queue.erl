@@ -111,7 +111,6 @@ init(Q) when ?is_amqqueue(Q) ->
     {ok, rabbit_fifo_client:state(), rabbit_queue_type:actions()} |
     eol.
 handle_event({From, Evt}, QState) ->
-    % rabbit_log:info("qq: handle_event ~w", [Evt]),
     rabbit_fifo_client:handle_ra_event(From, Evt, QState).
 
 -spec declare(amqqueue:amqqueue(), node()) ->
@@ -253,7 +252,8 @@ all_replica_states() ->
 
 -spec list_with_minimum_quorum() -> [amqqueue:amqqueue()].
 list_with_minimum_quorum() ->
-    filter_quorum_critical(rabbit_amqqueue:list_local_quorum_queues()).
+    filter_quorum_critical(
+      rabbit_amqqueue:list_local_quorum_queues()).
 
 -spec list_with_minimum_quorum_for_cli() -> [amqqueue:amqqueue()].
 list_with_minimum_quorum_for_cli() ->

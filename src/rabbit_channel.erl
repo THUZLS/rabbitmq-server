@@ -1370,7 +1370,18 @@ handle_method(#'basic.get'{queue = QueueNameBin, no_ack = NoAck},
             {reply, #'basic.get_empty'{}, State#ch{queue_states = QueueStates}};
         empty ->
             ?INCR_STATS(queue_stats, QueueName, 1, get_empty, State),
-            {reply, #'basic.get_empty'{}, State}
+            {reply, #'basic.get_empty'{}, State};
+        {error, {unsupported, single_active_consumer}} ->
+            rabbit_misc:protocol_error(
+              resource_locked,
+              "cannot obtain access to locked ~s. basic.get operations "
+              "are not supported by quorum queues with single active consumer",
+              [rabbit_misc:rs(QueueName)]);
+        {error, Reason} ->
+            %% TODO add queue type to error message
+            rabbit_misc:protocol_error(internal_error,
+                                       "Cannot get a message from queue '~s': ~p",
+                                       [rabbit_misc:rs(QueueName), Reason])
     end;
 
 handle_method(#'basic.consume'{queue        = <<"amq.rabbitmq.reply-to">>,

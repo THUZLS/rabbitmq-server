@@ -463,7 +463,9 @@ dequeue(Q, NoAck, LimiterPid, CTag, Ctxs) ->
         {ok, Num, Msg, State} ->
             {ok, Num, Msg, set_ctx(Q, Ctx#ctx{state = State}, Ctxs)};
         {empty, State} ->
-            {empty, set_ctx(Q, Ctx#ctx{state = State}, Ctxs)}
+            {empty, set_ctx(Q, Ctx#ctx{state = State}, Ctxs)};
+        {error, _} = Err ->
+            Err
     end.
 
 %% temporary
