@@ -39,12 +39,14 @@ init([]) ->
             {ok, #state{mechanism = legacy,
                         sd_notify_module = sd_notify}};
         {error, _} ->
-            case rabbit_prelaunch:get_context() of
-                #{systemd_notify_socket := Socket} when Socket =/= undefined ->
+            case os:getenv("NOTIFY_SOCKET") of
+                false ->
+                    ignore;
+                "" ->
+                    ignore;
+                Socket ->
                     {ok, #state{mechanism = socat,
-                                socket = Socket}};
-                _ ->
-                    ignore
+                                socket = Socket}}
             end
     end.
 
